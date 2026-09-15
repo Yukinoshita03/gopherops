@@ -1,0 +1,12 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+/bin/
+/dist/
+/coverage.out
+node_modules/
+*.log
+kubeconfig*
+*.pem
+*.key
