@@ -4,13 +4,13 @@
 
 ## 当前状态
 
-仅创建项目结构与四个可编译的入口。没有实现登录、HTTP 服务、Agent、数据库连接或 Kubernetes 部署。入口运行后输出占位信息并退出。
+已创建项目结构与四个可编译的入口，正在实现 identity 的 MySQL 用户存取层：已有领域对象、Repository 接口与实现、users 迁移。尚无业务测试或数据库联调证据；没有实现登录、HTTP 服务、Agent、数据库启动装配或 Kubernetes 部署。入口运行后输出占位信息并退出。
 
 本次骨架未复制 GopherAI 源码；后续引用上游代码时需保留来源并核对适用许可证。
 
 ## 技术目标
 
-Go + Gin + MySQL + Redis + RabbitMQ + Agent/MCP + Kubernetes，前端预留 Vue。业务依赖尚未引入。
+Go + Gin + MySQL + Redis + RabbitMQ + Agent/MCP + Kubernetes，前端预留 Vue。当前已引入 GORM/MySQL 依赖，其余按阶段接入，不代表已实现。
 
 ## 服务与模块
 
@@ -58,4 +58,4 @@ go run ./cmd/platform
 5. 集群诊断：只读工具、证据报告、SSE 与固定故障评测。
 6. Kubernetes：镜像、权限、探针与多副本验证。
 
-详见 [架构设计](docs/architecture.md)。
+开发阶段、验收标准和当前下一步以 [总体设计与开发计划](docs/project-plan.md) 为准；另见 [架构概要](docs/architecture.md) 和 [开发与教学交接](AGENTS.md)。

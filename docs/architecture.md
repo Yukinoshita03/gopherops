@@ -4,7 +4,7 @@
 
 参考项目：youngyangyang04/GopherAI，检查时提交 `1d892e4afffca02e3232f8928c2cdafafee5dac8`。
 借鉴 controller/service/dao 的分层思路，将代码职责明确为 domain/application/repository/transport。
-本项目当前没有业务实现，以下均为设计目标。
+本项目正在实现 identity 用户存取层，其余主流程仍为设计目标。阶段验收和实际进度详见 [总体设计与开发计划](project-plan.md)。
 
 ## 主流程
 
