@@ -60,7 +60,7 @@ Worker 通过内部 API 写入 platform 的数据；MVP 可以先用进程内接
 
 ## 3. 关键数据和接口草案
 
-以下为设计草案，只有 users 迁移已经存在。其他字段和路由在对应阶段实现前定稿。
+以下为设计草案。users、projects 和 project_members 的基础迁移文件已存在；其他字段、角色规则和路由在对应阶段实现前定稿。
 
 | 数据 | 所属 | 核心内容 |
 |---|---|---|
@@ -166,7 +166,8 @@ Redis 只在明确需要限流/缓存时引入；RabbitMQ 只在执行逻辑已�
 截至 2026-09-17，以本地工作区为准，不代表已经提交或推送。
 
 - 已有四个服务入口；identity 已装配 MySQL Repository、注册用例和 HTTP 路由。
-- 已写 User、UserRepository、MySQLUserRepository、users SQL 迁移；GORM/MySQL 依赖已引入。
+- 已写 User、UserRepository、MySQLUserRepository、users SQL 迁移；GORM/MySQL 依赖已引入。projects/project_members SQL 迁移已新增并挂载到 Compose 的空数据卷初始化；尚未在数据库执行，已有数据卷需单独应用 002。
+- 002 迁移按当前授权查询增加了项目/成员表、复合唯一主键、用户反查索引和外键；Compose YAML 静态解析与 `git diff --check` 通过。`IDENTITY_TEST_MYSQL_DSN` 未设置，未对数据库执行迁移。项目创建用例将来需在同一事务写入项目和 owner 成员。
 - 已检查：两种查询会映射 ErrUserNotFound 并透传其他错误。
 - 最新 Create 已改成检查 db.Error，成功后回填 ID/CreatedAt；此前提前返回问题已在代码中修正。
 - Create 仍接收传入对象的 ID/CreatedAt。普通注册应由服务端生成，后续明确创建契约，不能直接把客户端 JSON 绑定成可任意指定字段的 domain.User。
@@ -187,7 +188,7 @@ Redis 只在明确需要限流/缓存时引入；RabbitMQ 只在执行逻辑已�
 
 ### 下一步：持久化项目成员关系并做集成验证
 
-登录、RS256 签发/验证、认证中间件、`/v1/me` 和基于 Repository 接口的成员授权策略已接通；开发环境私钥由操作者本地生成并通过只读 Compose secret 挂载。下一小步是新增 identity 项目成员迁移及 MySQL `IsProjectMember` 查询，在独立测试库验证成员放行、跨项目拒绝和数据库错误，再从受保护的项目范围 HTTP 调用传入中间件提供的用户 ID。开放诊断任务 API 前必须完成这层授权。
+登录、RS256 签发/验证、认证中间件、`/v1/me`、成员授权策略和项目成员迁移文件已就绪；开发环境私钥由操作者本地生成并通过只读 Compose secret 挂载。下一小步是实现 MySQL `IsProjectMember` 查询，在独立测试库验证成员放行、跨项目拒绝和数据库错误，再从受保护的项目范围 HTTP 调用传入中间件提供的用户 ID。开放诊断任务 API 前必须完成这层授权。
 
 ## 8. 变更管理与待决项
 

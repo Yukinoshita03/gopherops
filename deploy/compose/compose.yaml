@@ -12,6 +12,7 @@ services:
     volumes:
       - identity_mysql_data:/var/lib/mysql
       - ../../migrations/identity/001_create_users.sql:/docker-entrypoint-initdb.d/001_create_users.sql:ro
+      - ../../migrations/identity/002_create_projects_and_project_members.sql:/docker-entrypoint-initdb.d/002_create_projects_and_project_members.sql:ro
     healthcheck:
       test:
         - CMD-SHELL

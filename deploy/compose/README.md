@@ -1,6 +1,6 @@
 # 本地开发环境
 
-Compose 在本机启动 MySQL 和 identity 两个独立容器。MySQL 使用持久化数据卷；新建空数据卷时，会自动执行 `migrations/identity/001_create_users.sql`。
+Compose 在本机启动 MySQL 和 identity 两个独立容器。MySQL 使用持久化数据卷；新建空数据卷时，会按编号执行 `migrations/identity/001_create_users.sql` 和 `migrations/identity/002_create_projects_and_project_members.sql`。
 
 ## 启动
 
@@ -74,6 +74,6 @@ docker compose logs -f mysql identity
 docker compose down
 ```
 
-`docker compose down` 会保留数据库数据卷。MySQL 官方镜像只在数据目录为空时执行初始化环境变量和 `/docker-entrypoint-initdb.d` 中的脚本；已有数据卷不会自动重跑迁移，修改 `.env` 中的密码也不会更新已有数据库账号。后续新增迁移时，应按迁移顺序对本地数据库执行，不要靠重建容器期待已有卷重新初始化。
+`docker compose down` 会保留数据库数据卷。MySQL 官方镜像只在数据目录为空时执行初始化环境变量和 `/docker-entrypoint-initdb.d` 中的脚本；已有数据卷不会自动重跑 002 迁移，修改 `.env` 中的密码也不会更新已有数据库账号。已有本地数据库需要单独按迁移顺序应用 `002_create_projects_and_project_members.sql`，不要靠重建容器期待已有卷重新初始化。
 
 `.env` 和 `*.pem` 已被 Git 忽略。不要把密码或私钥复制进 `.env.example`、Compose 文件或提交记录。
