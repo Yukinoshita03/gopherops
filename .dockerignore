@@ -1,0 +1,11 @@
+.git
+.env
+.env.*
+**/.git
+**/.env
+**/.env.*
+secrets/
+**/secrets/
+bin/
+dist/
+coverage.out

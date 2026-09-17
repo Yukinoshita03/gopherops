@@ -3,10 +3,12 @@ package repository
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/Yukinoshita03/gopherops/internal/identity/application/port"
 	"github.com/Yukinoshita03/gopherops/internal/identity/domain"
+	mysqldriver "github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
 )
 
@@ -40,12 +42,23 @@ func (r *MySQLUserRepository) Create(
 	model.PasswordHash = user.PasswordHash
 	db := r.db.WithContext(ctx).Create(&model)
 	if db.Error != nil {
+		if isUsernameUniqueConstraintError(db.Error) {
+			return domain.ErrUserAlreadyExists
+		}
 		return db.Error
 	}
 	user.ID = model.ID
 	user.CreatedAt = model.CreatedAt
 	return nil
 }
+
+func isUsernameUniqueConstraintError(err error) bool {
+	var mysqlErr *mysqldriver.MySQLError
+	return errors.As(err, &mysqlErr) &&
+		mysqlErr.Number == 1062 &&
+		strings.Contains(mysqlErr.Message, "uk_users_username")
+}
+
 func (r *MySQLUserRepository) GetByUsername(
 	ctx context.Context,
 	username string,

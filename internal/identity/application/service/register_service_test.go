@@ -16,10 +16,14 @@ import (
 var _ port.UserRepository = (*fakeUserRepository)(nil)
 
 type fakeUserRepository struct {
-	createCalls int
-	createdUser *domain.User
-	nextID      int64
-	createErr   error
+	createCalls        int
+	createdUser        *domain.User
+	nextID             int64
+	createErr          error
+	getByUsernameCalls int
+	queriedUsername    string
+	userByUsername     *domain.User
+	getByUsernameErr   error
 }
 
 func (f *fakeUserRepository) Create(
@@ -39,10 +43,12 @@ func (f *fakeUserRepository) Create(
 }
 
 func (f *fakeUserRepository) GetByUsername(
-	context.Context,
-	string,
+	_ context.Context,
+	username string,
 ) (*domain.User, error) {
-	return nil, nil
+	f.getByUsernameCalls++
+	f.queriedUsername = username
+	return f.userByUsername, f.getByUsernameErr
 }
 
 func (f *fakeUserRepository) GetByID(

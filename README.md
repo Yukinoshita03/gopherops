@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-已创建项目结构与四个可编译的入口，正在实现 identity 的 MySQL 用户存取层：已有领域对象、Repository 接口与实现、users 迁移。尚无业务测试或数据库联调证据；没有实现登录、HTTP 服务、Agent、数据库启动装配或 Kubernetes 部署。入口运行后输出占位信息并退出。
+identity 已接入注册和登录密码校验 HTTP 路由、MySQL Repository 和启动装配。`deploy/compose` 提供本地 MySQL 与 identity 容器编排及新数据卷初始化迁移，已实际启动验证：两个容器健康，注册请求成功写入数据库。MySQL Repository 集成测试已在独立测试库运行通过。登录目前尚未签发访问令牌；Agent 和 Kubernetes 部署尚未实现。
 
 本次骨架未复制 GopherAI 源码；后续引用上游代码时需保留来源并核对适用许可证。
 
@@ -47,7 +47,7 @@ make build
 go run ./cmd/platform
 ```
 
-目前 `go test` 仅验证包可编译，没有业务测试用例。
+运行 `make check` 可执行当前单元测试和静态检查。Compose 启动步骤见 [`deploy/compose/README.md`](deploy/compose/README.md)。
 
 ## 开发顺序
 

@@ -1,6 +1,6 @@
 # GopherOps 项目设计与开发计划
 
-更新：2026-09-16。面向开发者本人及后续接手指导的 Luna。
+更新：2026-09-17。面向开发者本人及后续接手指导的 Luna。
 
 ## 1. 项目定位
 
@@ -163,23 +163,28 @@ Redis 只在明确需要限流/缓存时引入；RabbitMQ 只在执行逻辑已�
 
 ## 7. 当前实现证据
 
-截至 2026-09-16，以本地工作区为准，不代表已经提交或推送。
+截至 2026-09-17，以本地工作区为准，不代表已经提交或推送。
 
-- 已有四个可编译入口，但仍打印占位信息并退出。
+- 已有四个服务入口；identity 已装配 MySQL Repository、注册用例和 HTTP 路由。
 - 已写 User、UserRepository、MySQLUserRepository、users SQL 迁移；GORM/MySQL 依赖已引入。
 - 已检查：两种查询会映射 ErrUserNotFound 并透传其他错误。
 - 最新 Create 已改成检查 db.Error，成功后回填 ID/CreatedAt；此前提前返回问题已在代码中修正。
 - Create 仍接收传入对象的 ID/CreatedAt。普通注册应由服务端生成，后续明确创建契约，不能直接把客户端 JSON 绑定成可任意指定字段的 domain.User。
-- go test ./... 与 go vet ./... 最近通过，但没有测试文件，不能称为业务测试通过。
-- 尚无 DB 启动装配、Repository 集成测试、注册/登录服务、HTTP 路由、Agent、队列、SSE 或实际部署。
+- 注册用例已有 fake Repository 单元测试。MySQL Repository 集成测试已增加，要求 `IDENTITY_TEST_MYSQL_DSN` 指向独立的 `identity_test_db`，不会回退到服务数据库。
+- 集成测试已在本地 MySQL 8.4.11 测试库运行通过，覆盖创建回填、按名/ID 查询、未找到、重复用户名领域错误映射、取消 context、数据库关闭错误；并发注册实测恰好一个 HTTP 201、一个 HTTP 409，数据库保留一条用户记录。
+- 注册 Handler 将 `domain.ErrUserAlreadyExists` 映射为稳定的 `username_already_exists` 响应，不暴露数据库错误；其他内部错误仍返回通用 500。
+- 本轮验证：设置独立测试库 DSN 后 `go test -count=1 ./...` 通过；真实 MySQL Repository 集成套件 `go test -race -count=1 ./internal/identity/repository` 通过；`go vet ./...` 和 `git diff --check` 通过。
+- `deploy/compose` 包含 MySQL 与 identity 的本地 Compose 编排、identity Dockerfile、空数据库初始化迁移和健康检查。本机实际启动后，MySQL 和 identity 均通过健康检查；`GET /healthz` 返回 204，注册接口返回 201 并写入 MySQL，测试用户已清理。
+- P1 登录基础闭环已实现：`POST /v1/auth/login` 按用户名读取用户并用 bcrypt 校验；未知用户与错误密码映射到统一凭证错误，HTTP 响应均为通用 401。Fake Repository 单元测试和 HTTP handler 测试覆盖成功、错误凭证、无效输入、坏 JSON、Repository 错误及内部错误隐藏。
+- 访问令牌、认证中间件、Agent、队列、SSE 与 Kubernetes 部署尚未实现。
 
-### 下一步：只完成 P0，不直接铺开所有功能
+### 当前阶段：P0 用户存取验收完成
 
-1. 明确 Create 成功回填以及重复用户名的错误契约。
-2. 添加独立测试库配置和数据库初始化，凭据用环境变量；不自动执行破坏性迁移。
-3. 编写 Repository 测试：创建回填、按名/ID查询、未找到、重复用户名、取消/数据库错误；无数据库时清楚报告跳过，不能假装通过。
-4. 验证迁移可执行，运行测试与静态检查，记录实际结果。
-5. 然后开始 application 注册用例，完成密码哈希、错误映射和 fake Repository 单元测试。
+重复用户名的 MySQL 错误已映射到 `domain.ErrUserAlreadyExists`，Handler 返回 HTTP 409；真实 MySQL 并发注册测试验证数据库唯一索引兜底。
+
+### 下一步：进入 P1 身份闭环
+
+登录密码校验接口已完成。接下来确定访问令牌的算法、有效期和密钥配置，接入令牌签发、认证与 `/v1/me`，再补齐过期令牌和最小项目授权验证。项目成员授权继续放在开放诊断任务 API 之前完成。
 
 ## 8. 变更管理与待决项
 
