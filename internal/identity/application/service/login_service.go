@@ -3,20 +3,24 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/Yukinoshita03/gopherops/internal/identity/application/port"
 	"github.com/Yukinoshita03/gopherops/internal/identity/application/usecase"
 	"github.com/Yukinoshita03/gopherops/internal/identity/domain"
+	identitytoken "github.com/Yukinoshita03/gopherops/internal/identity/token"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type LoginService struct {
 	userRepo port.UserRepository
+	signer   identitytoken.Signer
 }
 
-func NewLoginService(userRepo port.UserRepository) *LoginService {
-	return &LoginService{userRepo: userRepo}
+func NewLoginService(userRepo port.UserRepository, signer identitytoken.Signer) *LoginService {
+	return &LoginService{userRepo: userRepo, signer: signer}
 }
 
 var _ usecase.LoginUseCase = (*LoginService)(nil)
@@ -49,5 +53,17 @@ func (s *LoginService) Execute(
 		return usecase.LoginOutput{}, err
 	}
 
-	return usecase.LoginOutput{UserID: user.ID}, nil
+	if s.signer == nil {
+		return usecase.LoginOutput{}, errors.New("login token signer is not configured")
+	}
+	accessToken, expiresAt, err := s.signer.Sign(strconv.FormatInt(user.ID, 10))
+	if err != nil {
+		return usecase.LoginOutput{}, fmt.Errorf("sign access token: %w", err)
+	}
+
+	return usecase.LoginOutput{
+		UserID:      user.ID,
+		AccessToken: accessToken,
+		ExpiresAt:   expiresAt,
+	}, nil
 }

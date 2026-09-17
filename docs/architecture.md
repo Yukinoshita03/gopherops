@@ -10,7 +10,7 @@
 
 用户 → platform → MySQL（任务与 Outbox 同事务）→ 投递器 → RabbitMQ → agent-worker → cluster-tools → Kubernetes API。
 Worker 通过 platform 的内部接口领取执行权、续租、保存步骤与报告。前端通过 platform 查询或订阅进度。
-identity 负责身份与项目成员信息；令牌验证与资源授权边界将在接口设计阶段细化。
+identity 负责身份与项目成员信息；当前 identity HTTP 服务使用 RS256 令牌验证 `/v1/me`。platform 的项目成员授权和跨服务令牌验证仍待实现。
 
 ## 数据所有权
 

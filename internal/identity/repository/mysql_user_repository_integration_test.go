@@ -24,6 +24,12 @@ import (
 
 const identityTestDatabase = "identity_test_db"
 
+type integrationLoginTokenSigner struct{}
+
+func (integrationLoginTokenSigner) Sign(string) (string, time.Time, error) {
+	return "unused-test-token", time.Time{}, nil
+}
+
 func TestMySQLUserRepositoryIntegration(t *testing.T) {
 	repo, db := openMySQLUserRepositoryForTest(t)
 
@@ -96,7 +102,8 @@ func TestMySQLUserRepositoryIntegration(t *testing.T) {
 
 		router := httpapi.NewRouter(
 			service.NewRegisterService(repo),
-			service.NewLoginService(repo),
+			service.NewLoginService(repo, integrationLoginTokenSigner{}),
+			nil,
 		)
 		ready := make(chan struct{}, 2)
 		start := make(chan struct{})

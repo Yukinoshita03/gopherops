@@ -3,6 +3,7 @@ package httpapi
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/Yukinoshita03/gopherops/internal/identity/application/usecase"
 	"github.com/gin-gonic/gin"
@@ -22,7 +23,9 @@ type loginRequest struct {
 }
 
 type loginResponse struct {
-	UserID int64 `json:"user_id"`
+	UserID      int64     `json:"user_id"`
+	AccessToken string    `json:"access_token"`
+	ExpiresAt   time.Time `json:"expires_at"`
 }
 
 func (h *LoginHandler) Login(c *gin.Context) {
@@ -60,5 +63,9 @@ func (h *LoginHandler) Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, loginResponse{UserID: output.UserID})
+	c.JSON(http.StatusOK, loginResponse{
+		UserID:      output.UserID,
+		AccessToken: output.AccessToken,
+		ExpiresAt:   output.ExpiresAt,
+	})
 }

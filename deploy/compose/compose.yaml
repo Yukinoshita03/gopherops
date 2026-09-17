@@ -29,12 +29,19 @@ services:
       context: ../..
       dockerfile: build/docker/identity.Dockerfile
     restart: unless-stopped
+    user: "${IDENTITY_RUNTIME_UID:?set IDENTITY_RUNTIME_UID in .env}:${IDENTITY_RUNTIME_GID:?set IDENTITY_RUNTIME_GID in .env}"
     depends_on:
       mysql:
         condition: service_healthy
     environment:
       IDENTITY_MYSQL_DSN: "identity:${IDENTITY_DB_PASSWORD:?set IDENTITY_DB_PASSWORD in .env}@tcp(mysql:3306)/identity_db?charset=utf8mb4&parseTime=True&loc=UTC"
       IDENTITY_HTTP_ADDR: ":8081"
+      IDENTITY_JWT_PRIVATE_KEY_FILE: /run/secrets/identity_jwt_private_key
+      IDENTITY_JWT_ISSUER: "${IDENTITY_JWT_ISSUER:?set IDENTITY_JWT_ISSUER in .env}"
+      IDENTITY_JWT_AUDIENCE: "${IDENTITY_JWT_AUDIENCE:?set IDENTITY_JWT_AUDIENCE in .env}"
+      IDENTITY_JWT_TTL: "${IDENTITY_JWT_TTL:?set IDENTITY_JWT_TTL in .env}"
+    secrets:
+      - identity_jwt_private_key
     ports:
       - "127.0.0.1:8081:8081"
     healthcheck:
@@ -46,3 +53,7 @@ services:
 
 volumes:
   identity_mysql_data:
+
+secrets:
+  identity_jwt_private_key:
+    file: "${IDENTITY_JWT_PRIVATE_KEY_FILE:?set IDENTITY_JWT_PRIVATE_KEY_FILE in .env}"

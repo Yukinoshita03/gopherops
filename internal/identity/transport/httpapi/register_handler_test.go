@@ -43,7 +43,7 @@ func TestRegisterHandlerReturnsConflictForExistingUsername(t *testing.T) {
 		usecase.LoginInput,
 	) (usecase.LoginOutput, error) {
 		return usecase.LoginOutput{}, nil
-	}))
+	}), nil)
 	request := httptest.NewRequest(
 		http.MethodPost,
 		"/v1/auth/register",
@@ -79,7 +79,7 @@ func TestRegisterHandlerDoesNotExposeUnexpectedErrors(t *testing.T) {
 		usecase.LoginInput,
 	) (usecase.LoginOutput, error) {
 		return usecase.LoginOutput{}, nil
-	}))
+	}), nil)
 	request := httptest.NewRequest(
 		http.MethodPost,
 		"/v1/auth/register",

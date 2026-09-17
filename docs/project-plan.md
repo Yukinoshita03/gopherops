@@ -86,7 +86,7 @@ Worker 通过内部 API 写入 platform 的数据；MVP 可以先用进程内接
 
 统一错误使用稳定业务 code 和可读 message，不直接把 SQL、凭据或上游原始错误返回客户端。日志与客户端错误分离。
 注册冲突由数据库唯一索引兜底，不能只靠“先查询、再插入”。实现阶段补充用户已存在领域错误及 MySQL 错误映射。
-登录令牌建议先做短期有效的签名访问令牌；明确算法、签发方、受众、有效期与密钥管理，刷新/撤销策略单独设计，不默认已支持。
+identity 使用 RS256 签发短期访问令牌，claims 包含 sub、iss、aud、iat、exp；当前 Compose 开发配置使用 15 分钟 TTL，私钥通过本地 PEM 文件只读挂载，刷新与撤销策略尚未实现。验证器固定只接受 RS256，并检查签发方、受众和时间声明。
 在开放任务接口前必须接上项目授权；早期单用户演示只能绑定固定开发身份，不能伪装为完整权限系统。
 
 ## 4. Agent、Provider 与 SSE 的边界
@@ -175,16 +175,19 @@ Redis 只在明确需要限流/缓存时引入；RabbitMQ 只在执行逻辑已�
 - 注册 Handler 将 `domain.ErrUserAlreadyExists` 映射为稳定的 `username_already_exists` 响应，不暴露数据库错误；其他内部错误仍返回通用 500。
 - 本轮验证：设置独立测试库 DSN 后 `go test -count=1 ./...` 通过；真实 MySQL Repository 集成套件 `go test -race -count=1 ./internal/identity/repository` 通过；`go vet ./...` 和 `git diff --check` 通过。
 - `deploy/compose` 包含 MySQL 与 identity 的本地 Compose 编排、identity Dockerfile、空数据库初始化迁移和健康检查。本机实际启动后，MySQL 和 identity 均通过健康检查；`GET /healthz` 返回 204，注册接口返回 201 并写入 MySQL，测试用户已清理。
-- P1 登录基础闭环已实现：`POST /v1/auth/login` 按用户名读取用户并用 bcrypt 校验；未知用户与错误密码映射到统一凭证错误，HTTP 响应均为通用 401。Fake Repository 单元测试和 HTTP handler 测试覆盖成功、错误凭证、无效输入、坏 JSON、Repository 错误及内部错误隐藏。
-- 访问令牌、认证中间件、Agent、队列、SSE 与 Kubernetes 部署尚未实现。
+- P1 登录与认证基础闭环已实现：`POST /v1/auth/login` 按用户名读取用户并用 bcrypt 校验；未知用户与错误密码统一返回 401。登录服务注入 RS256 签发器，成功后返回 `access_token` 和 UTC `expires_at`；启动时从 PEM 一次装配签发器及对应公钥验证器。`GET /v1/me` 只接受单个 Bearer 头，验证通过后把正整数 subject 放入 Gin 请求上下文并返回 `user_id`。中间件单测覆盖缺失/重复/格式错误的头、验签失败和无效 subject；HTTP 集成测试使用真实 RSA 密钥走登录、验签、`/me`，并确认篡改签名返回 401。RS256 验证器单测另覆盖过期令牌。项目授权的 application 策略已实现，但数据库成员关系和 HTTP 路由集成尚未完成；Agent、队列、SSE 与 Kubernetes 部署尚未实现。
+- P1 项目授权策略首个闭环已实现：`ProjectMembershipRepository.IsProjectMember(ctx,userID,projectID)` 由 application service 调用；只有正数 ID 才查询，非成员返回 `domain.ErrProjectAccessDenied`，存储错误保留并包装传播。Fake Repository 单测覆盖成员放行、非成员拒绝、无效 ID 不触发查询、context 传播和存储错误。该授权策略尚未接 MySQL 成员表，也尚未挂到受项目范围保护的 HTTP 路由；角色差异暂未定义。
+- 本轮 `go test -count=1 ./...`、`go vet ./...`、`git diff --check` 和 Compose YAML 解析通过；PEM PKCS#1/PKCS#8 装载和 signer/verifier 往返测试通过。当前执行环境没有 Docker Compose CLI，因此新增的 Compose secret 挂载和 identity UID/GID 配置尚未实际启动验证。
+- 本轮认证中间件改动后再次运行 `go test -count=1 ./...`、`go vet ./...` 和 `git diff --check`，均通过。此次 `IDENTITY_TEST_MYSQL_DSN` 未设置，MySQL Repository 集成用例按设计跳过；新增的 HTTP 认证集成测试已执行，使用内存 fake Repository 和真实 RSA signer/verifier，不连接数据库。
+- 项目成员授权策略改动后，`go test -count=1 ./...`、`go vet ./...` 和 `git diff --check` 通过；本轮未设置 `IDENTITY_TEST_MYSQL_DSN`。Fake Repository 单测已验证允许、拒绝、无效 ID、context 传递和存储错误。
 
 ### 当前阶段：P0 用户存取验收完成
 
 重复用户名的 MySQL 错误已映射到 `domain.ErrUserAlreadyExists`，Handler 返回 HTTP 409；真实 MySQL 并发注册测试验证数据库唯一索引兜底。
 
-### 下一步：进入 P1 身份闭环
+### 下一步：持久化项目成员关系并做集成验证
 
-登录密码校验接口已完成。接下来确定访问令牌的算法、有效期和密钥配置，接入令牌签发、认证与 `/v1/me`，再补齐过期令牌和最小项目授权验证。项目成员授权继续放在开放诊断任务 API 之前完成。
+登录、RS256 签发/验证、认证中间件、`/v1/me` 和基于 Repository 接口的成员授权策略已接通；开发环境私钥由操作者本地生成并通过只读 Compose secret 挂载。下一小步是新增 identity 项目成员迁移及 MySQL `IsProjectMember` 查询，在独立测试库验证成员放行、跨项目拒绝和数据库错误，再从受保护的项目范围 HTTP 调用传入中间件提供的用户 ID。开放诊断任务 API 前必须完成这层授权。
 
 ## 8. 变更管理与待决项
 

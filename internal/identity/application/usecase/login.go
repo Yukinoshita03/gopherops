@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"time"
 )
 
 var (
@@ -16,7 +17,9 @@ type LoginInput struct {
 }
 
 type LoginOutput struct {
-	UserID int64
+	UserID      int64
+	AccessToken string
+	ExpiresAt   time.Time
 }
 
 type LoginUseCase interface {

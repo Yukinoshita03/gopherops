@@ -8,12 +8,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/Yukinoshita03/gopherops/internal/identity/application/usecase"
 	"github.com/Yukinoshita03/gopherops/internal/identity/transport/httpapi"
 )
 
 func TestLoginHandlerSuccess(t *testing.T) {
+	expiresAt := time.Date(2026, time.September, 17, 12, 0, 0, 0, time.UTC)
 	router := httpapi.NewRouter(
 		registerUseCaseFunc(func(context.Context, usecase.RegisterInput) (usecase.RegisterOutput, error) {
 			return usecase.RegisterOutput{}, nil
@@ -22,8 +24,13 @@ func TestLoginHandlerSuccess(t *testing.T) {
 			if input.Username != "alice" || input.Password != "secret" {
 				t.Fatalf("login input = %+v, want alice/secret", input)
 			}
-			return usecase.LoginOutput{UserID: 42}, nil
+			return usecase.LoginOutput{
+				UserID:      42,
+				AccessToken: "signed.jwt.token",
+				ExpiresAt:   expiresAt,
+			}, nil
 		}),
+		nil,
 	)
 	request := httptest.NewRequest(
 		http.MethodPost,
@@ -39,13 +46,21 @@ func TestLoginHandlerSuccess(t *testing.T) {
 		t.Fatalf("status = %d, want %d; body: %s", recorder.Code, http.StatusOK, recorder.Body.String())
 	}
 	var body struct {
-		UserID int64 `json:"user_id"`
+		UserID      int64     `json:"user_id"`
+		AccessToken string    `json:"access_token"`
+		ExpiresAt   time.Time `json:"expires_at"`
 	}
 	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode response body: %v", err)
 	}
 	if body.UserID != 42 {
 		t.Fatalf("user_id = %d, want 42", body.UserID)
+	}
+	if body.AccessToken != "signed.jwt.token" {
+		t.Fatalf("access_token = %q, want %q", body.AccessToken, "signed.jwt.token")
+	}
+	if !body.ExpiresAt.Equal(expiresAt) {
+		t.Fatalf("expires_at = %v, want %v", body.ExpiresAt, expiresAt)
 	}
 }
 
@@ -151,5 +166,6 @@ func loginTestRouter(login func(context.Context, usecase.LoginInput) (usecase.Lo
 			return usecase.RegisterOutput{}, nil
 		}),
 		loginUseCaseFunc(login),
+		nil,
 	)
 }
