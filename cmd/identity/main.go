@@ -62,9 +62,11 @@ func run() error {
 	}
 
 	userRepo := repository.NewMySQLUserRepository(db)
+	projectMembershipRepo := repository.NewMySQLProjectMembershipRepository(db)
 	registerService := service.NewRegisterService(userRepo)
 	loginService := service.NewLoginService(userRepo, signer)
-	router := httpapi.NewRouter(registerService, loginService, verifier)
+	projectAuthorizationService := service.NewProjectAuthorizationService(projectMembershipRepo)
+	router := httpapi.NewRouter(registerService, loginService, verifier, projectAuthorizationService)
 
 	log.Printf("identity service listening on %s", addr)
 	if err := router.Run(addr); err != nil {

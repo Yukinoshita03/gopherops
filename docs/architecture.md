@@ -4,13 +4,13 @@
 
 参考项目：youngyangyang04/GopherAI，检查时提交 `1d892e4afffca02e3232f8928c2cdafafee5dac8`。
 借鉴 controller/service/dao 的分层思路，将代码职责明确为 domain/application/repository/transport。
-本项目正在实现 identity 用户存取层，其余主流程仍为设计目标。阶段验收和实际进度详见 [总体设计与开发计划](project-plan.md)。
+identity 已实现用户存取、RS256 登录认证，以及基于 `project_members` 的 MySQL 项目成员检查。其余主流程仍为设计目标。阶段验收和实际进度详见 [总体设计与开发计划](project-plan.md)。
 
 ## 主流程
 
 用户 → platform → MySQL（任务与 Outbox 同事务）→ 投递器 → RabbitMQ → agent-worker → cluster-tools → Kubernetes API。
 Worker 通过 platform 的内部接口领取执行权、续租、保存步骤与报告。前端通过 platform 查询或订阅进度。
-identity 负责身份与项目成员信息；当前 identity HTTP 服务使用 RS256 令牌验证 `/v1/me`。platform 的项目成员授权和跨服务令牌验证仍待实现。
+identity 负责身份与项目成员信息；当前 identity HTTP 服务使用 RS256 令牌验证 `/v1/me`，并通过 `GET /v1/projects/:project_id/access` 检查认证用户的成员资格。platform 的项目成员授权和跨服务令牌验证仍待实现。
 
 ## 数据所有权
 
